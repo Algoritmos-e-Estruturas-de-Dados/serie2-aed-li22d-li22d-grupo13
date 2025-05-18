@@ -1,129 +1,117 @@
 package serie2.part4
 
-// Mapa baseado numa tabela de dispersão (hash table)
+/**
+ * Estrutura de dicionário baseada numa hash table com resolução de colisões por encadeamento.
+ */
 class HashMap<K, V>(
-    initialCapacity: Int = 16,
-    val loadFactor: Float = 0.75f,
+    capacidadeInicial: Int = 16,
+    val fatorCarga: Float = 0.75f
 ) : MutableMap<K, V> {
 
-    // Representa um nó na lista ligada de colisões (um par chave-valor)
-    private class HashNode<K, V>(
+    /**
+     * Elemento que representa um par chave-valor na lista ligada usada para colisões.
+     */
+    private class EntradaHash<K, V>(
         override val key: K,
         override var value: V,
-        var next: HashNode<K, V>? = null,
+        var proxima: EntradaHash<K, V>? = null
     ) : MutableMap.MutableEntry<K, V> {
-        override fun setValue(newValue: V): V {
-            val previous = value
-            value = newValue
-            return previous
+        override fun setValue(novoValor: V): V {
+            val anterior = value
+            value = novoValor
+            return anterior
         }
     }
 
-    private var table: Array<HashNode<K, V>?> = arrayOfNulls(initialCapacity)
+    private var baldes: Array<EntradaHash<K, V>?> = arrayOfNulls(capacidadeInicial)
     override var size = 0
     override val capacity: Int
-        get() = table.size
+        get() = baldes.size
 
-    // gera um indice positivo a partir do hashCode da chave
-    private fun hash(key: K): Int {
-        var idx = key.hashCode() % capacity
-        if (idx < 0) idx += capacity
-        return idx
+    private fun calcularIndice(chave: K): Int {
+        val hash = chave.hashCode() % capacity
+        return if (hash >= 0) hash else hash + capacity
     }
 
-    // retorna o valor associado a chave, ou null se não existir
     override fun get(key: K): V? {
-        val index = hash(key)
-        var current = table[index]
-        while (current != null) {
-            if (key == current.key) return current.value
-            current = current.next
+        val pos = calcularIndice(key)
+        var atual = baldes[pos]
+        while (atual != null) {
+            if (atual.key == key) return atual.value
+            atual = atual.proxima
         }
         return null
     }
 
-    // insere ou atualiza o valor associado a chave
-    override fun put(key: K, value: V, ): V? {
-        // verifica se a tabela precisa de expansao
-        if (size.toFloat() / capacity >= loadFactor) {
-            expand()
-        }
+    override fun put(key: K, value: V): V? {
+        if (size.toFloat() / capacity >= fatorCarga) expandir()
 
-        val index = hash(key)
-        var current = table[index]
+        val pos = calcularIndice(key)
+        var cursor = baldes[pos]
 
-        while (current != null) {
-            if (key == current.key) {
-                val old = current.value
-                current.value = value
-                return old
+        while (cursor != null) {
+            if (cursor.key == key) {
+                val anterior = cursor.value
+                cursor.value = value
+                return anterior
             }
-            current = current.next
+            cursor = cursor.proxima
         }
 
-        // Insere um novo nó na tabela
-        val newNode = HashNode(key, value, table[index])
-        table[index] = newNode
+        baldes[pos] = EntradaHash(key, value, baldes[pos])
         size++
         return null
     }
 
-    // dobra a capacidade da tabela e redistribui (re-hash) os nós
-    private fun expand() {
-        val newCapacity = capacity * 2
-        val newTable = arrayOfNulls<HashNode<K, V>?>(newCapacity)
+    private fun expandir() {
+        val novaCapacidade = capacity * 2
+        val novosBaldes = arrayOfNulls<EntradaHash<K, V>?>(novaCapacidade)
 
-        for (i in table.indices) {
-            var node = table[i]
-            while (node != null) {
-                val next = node.next
-                var newIndex = node.key.hashCode() % newCapacity
-                if (newIndex < 0) newIndex += newCapacity
+        for (i in baldes.indices) {
+            var atual = baldes[i]
+            while (atual != null) {
+                val seguinte = atual.proxima
+                var novoIndice = atual.key.hashCode() % novaCapacidade
+                if (novoIndice < 0) novoIndice += novaCapacidade
 
-                // move o nó para a nova tabela
-                node.next = newTable[newIndex]
-                newTable[newIndex] = node
-                node = next
+                atual.proxima = novosBaldes[novoIndice]
+                novosBaldes[novoIndice] = atual
+                atual = seguinte
             }
         }
-
-        table = newTable
+        baldes = novosBaldes
     }
 
-    // permite iterar sobre os pares chave-valor
     override fun iterator(): Iterator<MutableMap.MutableEntry<K, V>> {
         return object : Iterator<MutableMap.MutableEntry<K, V>> {
-            private var tableIndex = 0
-            private var currentNode: HashNode<K, V>? = null
+            private var posicao = 0
+            private var atual: EntradaHash<K, V>? = null
 
             init {
-                moveToNext()
+                avancar()
             }
 
-            // Move para o próximo nó disponivel na tabela
-            private fun moveToNext() {
-                if (currentNode?.next != null) {
-                    currentNode = currentNode?.next
+            private fun avancar() {
+                if (atual?.proxima != null) {
+                    atual = atual!!.proxima
                     return
                 }
-                tableIndex++
-                while (tableIndex < capacity) {
-                    if (table[tableIndex] != null) {
-                        currentNode = table[tableIndex]
+                while (++posicao < capacity) {
+                    if (baldes[posicao] != null) {
+                        atual = baldes[posicao]
                         return
                     }
-                    tableIndex++
                 }
-                currentNode = null
+                atual = null
             }
 
-            override fun hasNext(): Boolean = currentNode != null
+            override fun hasNext(): Boolean = atual != null
 
             override fun next(): MutableMap.MutableEntry<K, V> {
                 if (!hasNext()) throw NoSuchElementException()
-                val current = currentNode!!
-                moveToNext()
-                return current
+                val retorno = atual!!
+                avancar()
+                return retorno
             }
         }
     }

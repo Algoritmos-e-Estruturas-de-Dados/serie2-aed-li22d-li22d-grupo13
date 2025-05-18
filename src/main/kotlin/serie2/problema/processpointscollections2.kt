@@ -1,119 +1,97 @@
 package serie2.problema
 
 import serie2.part4.HashMap
+object PointProcessorCustom {
+    // Estrutura que representa um ponto no plano
+    private data class Coordinate(val x: Float, val y: Float)
 
-object ProcessPointsCollection2 {
-    private data class Point(val x: Float, val y: Float)
-    // Definido o tipo Int no parâmetro "value" do mapa que representa o subficheiro de onde foi extraída a chave (Ponto)
-    // Quando value = 1, o ponto foi extraído do primeiro ficheiro.
-    // Quando value = 2, o ponto foi extraído do segundo ficheiro.
-    // O tipo "Point" como chave permite ter chaves iguais para pontos iguais e chaves diferentes para pontos diferentes.
-    private var hashMap = HashMap<Point, Array<Boolean>>() // Cria o hashMap
+    // Mapa personalizado para associar pontos à sua presença nos ficheiros
+    private var pointTable = HashMap<Coordinate, Array<Boolean>>()
 
-    fun load(file1: String, file2: String){
-        val reader1 = createReader(file1) // Abre os leitores dos ficheiros de entrada
-        val reader2 = createReader(file2)
+    // Função que carrega os pontos dos ficheiros para a estrutura de dados
+    fun load(first: String, second: String) {
+        val rdr1 = createReader(first)
+        val rdr2 = createReader(second)
 
-        var x1 = reader1.readLine() // Lê uma linha do ficheiro (file1)
-        var x2 = reader2.readLine() // Lê uma linha do ficheiro (file2)
+        var entry1 = rdr1.readLine()
+        var entry2 = rdr2.readLine()
 
-        while (x1.split(' ')[0] != "v" && x2.split(' ')[0] != "v"){ // Lê continuamente as linhas dos ficheiros até chegar aos pontos
-            x1 = reader1.readLine()
-            x2 = reader2.readLine()
-            continue
+        // Ignora comentários e cabeçalhos até encontrar pontos
+        while (entry1.split(' ')[0] != "v" && entry2.split(' ')[0] != "v") {
+            entry1 = rdr1.readLine()
+            entry2 = rdr2.readLine()
         }
-        // Caso a leitura das linhas do ficheiro resulte num "null", significa que o ficheiro não tem mais linhas para serem lidas.
-        while (x1 != null || x2 != null) {
-            if (x1 != null) {
-                val x = x1.split(' ')[2].toFloat() // Extrai o valor de x
-                val y = x1.split(' ')[3].toFloat() // Extrai o valor de y
-                val oldValue = hashMap[Point(x,y)] // Guarda o valor anteriormente associado ao ponto (permite perceber a sua origem caso já exista na tabela)
 
-                if (oldValue != null && !oldValue[0]) hashMap.put(Point(x,y), arrayOf(true, true))
-                else if (oldValue == null) hashMap.put(Point(x,y), arrayOf(true, false))
+        // Lê as linhas até ao fim de ambos os ficheiros
+        while (entry1 != null || entry2 != null) {
+            if (entry1 != null) {
+                val tokens = entry1.split(' ')
+                val point = Coordinate(tokens[2].toFloat(), tokens[3].toFloat())
+                val prev = pointTable[point]
 
-                x1 = reader1.readLine() // Lê a próxima linha
+                // Marca presença do ponto no primeiro ficheiro
+                if (prev != null && !prev[0])
+                    pointTable.put(point, arrayOf(true, true))
+                else if (prev == null)
+                    pointTable.put(point, arrayOf(true, false))
+
+                entry1 = rdr1.readLine()
             }
-            if (x2 != null) {
-                val x = x2.split(' ')[2].toFloat() // Extrai o valor da chave
-                val y = x2.split(' ')[3].toFloat() // Extrai o valor de "value"
-                val oldValue = hashMap.get(Point(x,y)) // Coloca o par no mapa
 
-                if (oldValue != null && !oldValue[1]) hashMap.put(Point(x,y), arrayOf(true, true)) // Ponto está presente na tabela e no outro ficheiro
-                else if (oldValue == null) hashMap.put(Point(x,y), arrayOf(false, true)) // Ponto ainda não está na tabela
+            if (entry2 != null) {
+                val tokens = entry2.split(' ')
+                val point = Coordinate(tokens[2].toFloat(), tokens[3].toFloat())
+                val prev = pointTable.get(point)
 
-                x2 = reader2.readLine() // Lê a próxima linha
+                // Marca presença do ponto no segundo ficheiro
+                if (prev != null && !prev[1])
+                    pointTable.put(point, arrayOf(true, true))
+                else if (prev == null)
+                    pointTable.put(point, arrayOf(false, true))
+
+                entry2 = rdr2.readLine()
             }
         }
-        reader1.close() // Fecha os leitores dos ficheiros
-        reader2.close()
+
+        // Fecha os leitores dos ficheiros
+        rdr1.close()
+        rdr2.close()
     }
 
-
-    fun union(file: String){
-        val exitFile = createWriter(file)
-
-        for (point in hashMap) {
-            exitFile.println("${point.key.x} , ${point.key.y}")
+    // Escreve todos os pontos num ficheiro (união)
+    fun union(output: String) {
+        val writer = createWriter(output)
+        for (entry in pointTable) {
+            writer.println("${entry.key.x} , ${entry.key.y}")
         }
-        exitFile.close()
+        writer.close()
     }
 
-    fun intersection(file: String){
-        val exitFile = createWriter(file)
-
-        for (point in hashMap) {
-            if (point.value[0] && point.value[1])
-                exitFile.println("${point.key.x} , ${point.key.y}")
+    // Escreve apenas os pontos comuns a ambos os ficheiros
+    fun intersection(output: String) {
+        val writer = createWriter(output)
+        for (entry in pointTable) {
+            if (entry.value[0] && entry.value[1])
+                writer.println("${entry.key.x} , ${entry.key.y}")
         }
-        exitFile.close()
+        writer.close()
     }
 
-    fun difference(file: String){
-        val exitFile = createWriter(file)
-
-        for (point in hashMap) {
-            if (point.value[0] xor point.value[1])
-                exitFile.println("${point.key.x} , ${point.key.y}")
+    // Escreve os pontos exclusivos a um dos ficheiros (diferença simétrica)
+    fun difference(output: String) {
+        val writer = createWriter(output)
+        for (entry in pointTable) {
+            if (entry.value[0] xor entry.value[1])
+                writer.println("${entry.key.x} , ${entry.key.y}")
         }
-        exitFile.close()
+        writer.close()
     }
 }
 
 fun main() {
-//    var command = ""
-//    while (command != "exit") {
-//        println("""Write a command
-//>
-//        """.trimMargin())
-//
-//        val input = readln().split(' ')
-//
-//        command = input[0] // Separa-se a palavra chave do comando do restante para ser mais percetível
-//
-//        when (command) {
-//            "load" -> {
-//                if (input.size != 3) continue
-//                else ProcessPointsCollection2.load(input[1], input[2])
-//            }
-//            "union" -> {
-//                if (input.size != 2) continue
-//                ProcessPointsCollection2.union(input[1])
-//            }
-//            "intersection" -> {
-//                if (input.size != 2) continue
-//                ProcessPointsCollection2.intersection(input[1])
-//            }
-//            "difference" -> {
-//                if (input.size != 2) continue
-//                ProcessPointsCollection2.difference(input[1])
-//            }
-//        }
-//    }
-//    println("Aplicação Terminada")
-
-    ProcessPointsCollection2.load("Test1.co", "Test2.co")
-    ProcessPointsCollection2.union("union.co")
-    ProcessPointsCollection2.difference("difference.co")
-    ProcessPointsCollection2.intersection("intersection.co")
+    // Testa as funções com os ficheiros fornecidos
+    PointProcessorCustom.load("Test1.co", "Test2.co")
+    PointProcessorCustom.union("union.co")
+    PointProcessorCustom.difference("difference.co")
+    PointProcessorCustom.intersection("intersection.co")
 }

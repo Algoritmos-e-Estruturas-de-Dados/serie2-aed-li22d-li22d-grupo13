@@ -1,187 +1,154 @@
 package serie2.part3
 
-class Node<T> (
+class Node<T>(
     var value: T = Any() as T,
     var next: Node<T>? = null,
-    var previous: Node<T>? = null) {
-}
+    var previous: Node<T>? = null
+)
 
-fun splitEvensAndOdds(list:Node<Int>){
-    var current = list.next
+fun splitEvensAndOdds(list: Node<Int>) {
     val sentinel = list
+    var current = sentinel.next
 
-    // percorre a lista ate voltar ao nó sentinela
-    while (current != sentinel) {
-        val nextNode = current!!.next
+    // Continua até que o nó atual volte ao sentinela
+    while (current !== sentinel) {
+        val following = current!!.next
 
-        // Verifica se o nó atual é par, se sim, move-o para o início da lista
+        // Se for par, move o nó para a frente da lista
         if (current.value % 2 == 0) {
-            // Remover o nó atual da sua posição atuala
+            // Desvincula o nó da sua posição atual
             current.previous!!.next = current.next
             current.next!!.previous = current.previous
 
-            // Inserir o nó logo após o sentinela (no início da lista)
-            current.next = sentinel.next
+            // Coloca imediatamente após o sentinela
             current.previous = sentinel
+            current.next = sentinel.next
             sentinel.next!!.previous = current
             sentinel.next = current
         }
-        // Avança para o proximo nó
-        current = nextNode
+
+        current = following
     }
 }
 
-
 fun <T> intersection(list1: Node<T>, list2: Node<T>, cmp: Comparator<T>): Node<T>? {
-    // Inicializa o início e o final da lista (lista não circular e sem nó sentinela)
-    var resultHead: Node<T>? = null
-    var resultTail: Node<T>? = null
+    var head: Node<T>? = null
+    var tail: Node<T>? = null
 
-    // Começa pelos primeiros elementos (ignora sentinelas)
-    var current1 = list1.next
-    var current2 = list2.next
+    var ptr1 = list1.next
+    var ptr2 = list2.next
 
-    // Percorre ambas as listas enquanto nenhuma regressar ao seu nó sentinela
-    while (current1 != list1 && current2 != list2) {
-        // Compara os valores atuais usando o comparador fornecido
-        val comparison = cmp.compare(current1!!.value, current2!!.value)
+    while (ptr1 != list1 && ptr2 != list2) {
+        val result = cmp.compare(ptr1!!.value, ptr2!!.value)
 
-        if (comparison == 0) {
-            // Se os valores são iguais, encontramos um elemento comum
-            val commonValue = current1.value
+        if (result == 0) {
+            val valMatch = ptr1.value
+            val next1 = ptr1.next
+            val next2 = ptr2.next
 
-            // Guarda os próximos nós antes de remover os atuais
-            var next1 = current1.next
-            var next2 = current2.next
+            // Remove de ambas as listas
+            ptr1.previous!!.next = ptr1.next
+            ptr1.next!!.previous = ptr1.previous
+            ptr2!!.previous!!.next = ptr2.next
+            ptr2.next!!.previous = ptr2.previous
 
-            // Remove current1 da list1
-            current1.previous!!.next = current1.next
-            current1.next!!.previous = current1.previous
+            ptr1.previous = tail
+            ptr1.next = null
 
-            // Remove current2 da list2
-            current2.previous!!.next = current2.next
-            current2.next!!.previous = current2.previous
-
-            // Reutiliza o nó de current1 e adiciona-o à lista
-            current1.previous = resultTail
-            current1.next = null
-
-            // Se a lista estiver vazia, inicializa o head e o tail
-            if (resultHead == null) {
-                resultHead = current1
-                resultTail = current1
+            if (head == null) {
+                head = ptr1
+                tail = ptr1
             } else {
-                // Caso contrário, adiciona ao final e atualiza o tail
-                resultTail!!.next = current1
-                resultTail = current1
+                tail!!.next = ptr1
+                tail = ptr1
             }
 
-            // Salta valores duplicados em list1
-            while (next1 != list1 && cmp.compare(next1!!.value, commonValue) == 0) {
-                next1 = next1.next
+            var skip1 = next1
+            while (skip1 != list1 && cmp.compare(skip1!!.value, valMatch) == 0) {
+                skip1 = skip1.next
             }
 
-            // Salta valores duplicados em list2
-            while (next2 != list2 && cmp.compare(next2!!.value, commonValue) == 0) {
-                next2 = next2.next
+            var skip2 = next2
+            while (skip2 != list2 && cmp.compare(skip2!!.value, valMatch) == 0) {
+                skip2 = skip2.next
             }
 
-            // Avança para os próximos elementos distintos em ambas as listas
-            current1 = next1
-            current2 = next2
-        } else if (comparison < 0) {
-            // current1 é menor, avança list1
-            current1 = current1.next
+            ptr1 = skip1
+            ptr2 = skip2
+        } else if (result < 0) {
+            ptr1 = ptr1.next
         } else {
-            // current2 é menor, avança list2
-            current2 = current2.next
+            ptr2 = ptr2!!.next
         }
     }
 
-    // Retorna o início da lista resultado (ou null se não houver interseção)
-    return resultHead
+    return head
 }
 
-// -------------------- FUNÇÕES DE TESTE / AUXILIARES --------------------
+// -------------------- Funçoes Auxiliares --------------------
 
-// Função para criar uma lista circular com nó sentinela
 fun <T> listaCircularComSentinela(values: List<T>): Node<T> {
     val sentinel = Node<T>()
     sentinel.next = sentinel
     sentinel.previous = sentinel
 
-    // Adiciona os valores à lista circular
-    for (i in values) {
-        val newNode = Node(i)
-        newNode.next = sentinel
-        newNode.previous = sentinel.previous
-        sentinel.previous!!.next = newNode
-        sentinel.previous = newNode
+    values.forEach { valor ->
+        val novo = Node(valor)
+        novo.next = sentinel
+        novo.previous = sentinel.previous
+        sentinel.previous!!.next = novo
+        sentinel.previous = novo
     }
     return sentinel
 }
 
-// Imprime os elementos de uma lista circular com sentinela
 fun <T> printListaCircularComSentinela(sentinel: Node<T>) {
-    var current = sentinel.next
-    while (current != sentinel) {
-        print("${current!!.value} ")
-        current = current.next
+    var atual = sentinel.next
+    while (atual !== sentinel) {
+        print("${atual!!.value} ")
+        atual = atual.next
     }
     println()
 }
 
-// Imprime uma lista sem sentinela (e não circular)
 fun <T> printLinearList(list: Node<T>?) {
-    var current = list
-    while (current != null) {
-        print("${current.value} ")
-        current = current.next
+    var atual = list
+    while (atual != null) {
+        print("${atual.value} ")
+        atual = atual.next
     }
     println()
 }
 
-
-// Função para gerar uma lista de inteiros aleatórios
 fun randomIntList(size: Int, max: Int): List<Int> {
     return List(size) { (0..max).random() }
 }
-// -------------------- FUNÇÃO MAIN --------------------
+
+// -------------------- MAIN --------------------
 
 fun main() {
     println("=== Teste: splitEvensAndOdds ===")
+    val numerosAleatorios = randomIntList(10, 100)
+    println("Original:")
+    println(numerosAleatorios)
 
-    // Gera uma lista aleatória de inteiros
-    val randomList = randomIntList(size = 10, max = 100)
-    println("Lista original:")
-    println(randomList)
+    val lista = listaCircularComSentinela(numerosAleatorios)
+    splitEvensAndOdds(lista)
 
-    // Cria a lista circular com sentinela
-    val circularList = listaCircularComSentinela(randomList)
-
-    // Aplica splitEvensAndOdds
-    splitEvensAndOdds(circularList)
-
-    println("Lista após aplicar splitEvensAndOdds:")
-    printListaCircularComSentinela(circularList)
+    println("Após reordenar pares no início:")
+    printListaCircularComSentinela(lista)
 
     println("\n=== Teste: intersection ===")
+    val l1 = listOf(7, 6, 16, 9, 2, 5, 14, 13, 3, 10).sorted()
+    val l2 = listOf(8, 5, 6, 17, 12, 9, 14, 13, 18, 11).sorted()
 
-    println("Teste de intersection")
-    val list1 = listOf(7, 6, 16, 9, 2, 5, 14, 13, 3, 10).sorted()
-    val list2 = listOf(8, 5, 6, 17, 12, 9, 14, 13, 18, 11).sorted()
+    println("Lista 1: $l1")
+    println("Lista 2: $l2")
 
-    println("List1 ordenada: $list1")
-    println("List2 ordenada: $list2")
+    val c1 = listaCircularComSentinela(l1)
+    val c2 = listaCircularComSentinela(l2)
 
-    // Cria listas circulares com sentinela
-    val circularList1 = listaCircularComSentinela(list1)
-    val circularList2 = listaCircularComSentinela(list2)
-
-    // Aplica a função de interseção
-    val intersectionList = intersection(circularList1, circularList2, Comparator { a,b -> a - b})
-
-    println("Resultado da interseção:")
-    printLinearList(intersectionList)
-
+    val resultado = intersection(c1, c2, Comparator { a, b -> a - b })
+    println("Interseção:")
+    printLinearList(resultado)
 }

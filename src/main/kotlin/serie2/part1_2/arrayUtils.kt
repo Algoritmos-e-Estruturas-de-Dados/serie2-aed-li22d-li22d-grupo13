@@ -1,25 +1,25 @@
 package serie2.part1_2
 import kotlin.random.Random
+
 /*
-Encontra o menor elemento num max heap
-Num max heap, o menor elemento estará obrigatoriamente numa das folhas
-Como o heap está representado por um array, as folhas começam no índice heapSize / 2
-Esta função procura eficientemente entre as folhas para encontrar o menor valor
+Determina o menor valor presente nas folhas de um max heap.
+Num max heap, os menores valores encontram-se entre as folhas,
+que estão localizadas a partir do índice heapSize / 2 até ao fim do array.
+Esta função faz uma varredura por esses elementos para identificar o mínimo.
 */
 
 fun minimum(maxHeap: Array<Int>, heapSize: Int): Int {
 
-    // Assume que a primeira folha é o mínimo inicialmente
-    var min = maxHeap[heapSize / 2]
+    // Inicialização do valor mínimo com a primeira folha
+    var min = maxHeap[heapSize shr 1]
 
-    // Percorre todas as folhas (desde o índice heapSize / 2 até heapSize - 1)
-    for (i in heapSize / 2 until heapSize) {
-        // Se o elemento atual for menor que o mínimo encontrado, atualiza o mínimo
-        if (maxHeap[i] < min) {
-            min = maxHeap[i]
-        }
+    var i = heapSize shr 1
+    while (i < heapSize) {
+        val current = maxHeap[i]
+        if (current < min) min = current
+        i++
     }
-    // Retorna o menor elemento encontrado entre as folhas
-    return min
 
+    // Devolve o menor valor encontrado entre as folhas
+    return min
 }
